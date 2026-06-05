@@ -2,19 +2,6 @@
 // Keyball44 = 6 columns/side + 5+3 thumbs (44 keys).
 // Keyball39 = 5 columns/side + 6+3 thumbs (39 keys).
 //
-// === 移植の難所(44 -> 39 の差分) ===
-// 1. 外側小指カラムが無い: 44 の左 col0 (ESC/LCTRL/LSHFT) と右 col5
-//    (LBKT/SQT/RSHFT) は 39 に物理キーが存在しないため削除。
-//    - LCTRL/LSHFT は親指 (td_ball / mt LSHFT) で従来どおり供給され消失なし。
-//    - ESC は 39 で 1 個余る左親指 (下記#2) へ退避。
-//    - LBKT は FUN/NUM レイヤーに、GRAVE/MINUS/EQUAL/BSLH は NAV に従来どおり
-//      存在するためベース層から消えても代替あり。
-//    - SQT (') と RSHFT はベース層から消失 (Shift は親指 mt LSHFT で代替)。
-//    - 44 の非デフォルト層の外側カラムは全て &none/&trans だったので、
-//      ベース層以外の外側カラム削除は完全に無損失。
-// 2. 親指が左 5 -> 6 で 1 個増える: 44 左親指5キーを 39 の c0,c1,c2,c4,c5 に
-//    対応付け、新設の c3 (index 下の親指) に ESC を退避。右親指は 3 -> 3 で完全一致。
-//    主操作 td0(NAV)/mt(LSHFT) は 39 の主親指 c4/c5 に載るよう対応付けた。
 
 #define DEFAULT 0
 #define NAV     1
