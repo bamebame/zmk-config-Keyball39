@@ -1,41 +1,58 @@
+// Migrated from Keyball44 (zmk-config-Keyball44/config/keyball44.keymap).
+// Keyball44 = 6 columns/side + 5+3 thumbs (44 keys).
+// Keyball39 = 5 columns/side + 6+3 thumbs (39 keys).
+//
+// === 移植の難所(44 -> 39 の差分) ===
+// 1. 外側小指カラムが無い: 44 の左 col0 (ESC/LCTRL/LSHFT) と右 col5
+//    (LBKT/SQT/RSHFT) は 39 に物理キーが存在しないため削除。
+//    - LCTRL/LSHFT は親指 (td_ball / mt LSHFT) で従来どおり供給され消失なし。
+//    - ESC は 39 で 1 個余る左親指 (下記#2) へ退避。
+//    - LBKT は FUN/NUM レイヤーに、GRAVE/MINUS/EQUAL/BSLH は NAV に従来どおり
+//      存在するためベース層から消えても代替あり。
+//    - SQT (') と RSHFT はベース層から消失 (Shift は親指 mt LSHFT で代替)。
+//    - 44 の非デフォルト層の外側カラムは全て &none/&trans だったので、
+//      ベース層以外の外側カラム削除は完全に無損失。
+// 2. 親指が左 5 -> 6 で 1 個増える: 44 左親指5キーを 39 の c0,c1,c2,c4,c5 に
+//    対応付け、新設の c3 (index 下の親指) に ESC を退避。右親指は 3 -> 3 で完全一致。
+//    主操作 td0(NAV)/mt(LSHFT) は 39 の主親指 c4/c5 に載るよう対応付けた。
+
 #define DEFAULT 0
-#define NUM     1
-#define SYM     2
-#define FUN     3
-#define MOUSE   4
+#define NAV     1
+#define FUN     2
+#define NUM     3
+#define BALL    4
 #define SCROLL  5
-#define SNIPE   6
 
 #include <behaviors/mouse_keys.dtsi>
-#include <dt-bindings/zmk/mouse.h>
 #include <behaviors.dtsi>
 #include <dt-bindings/zmk/bt.h>
 #include <dt-bindings/zmk/keys.h>
+#include <dt-bindings/zmk/mouse.h>
+#include <dt-bindings/zmk/outputs.h>
 
 &lt {
-    tapping-term-ms = <240>;
-    flavor = "balanced";
+    tapping-term-ms = <180>;
+    flavor = "hold-preferred";
     quick-tap-ms = <150>;
+    require-prior-idle-ms = <80>;
 };
 
 &mt {
-    tapping-term-ms = <200>;
-    flavor = "tap-preferred";
+    tapping-term-ms = <180>;
+    flavor = "hold-preferred";
     quick-tap-ms = <150>;
+    require-prior-idle-ms = <80>;
 };
 
 &caps_word { continue-list = <UNDERSCORE MINUS>; };
 
 / {
-    // custom shift using mod-morph 
-
     behaviors {
         cmqus: comma_question {
             compatible = "zmk,behavior-mod-morph";
             label = "COMMA_QUESTION";
             #binding-cells = <0>;
             bindings = <&kp COMMA>, <&kp QUESTION>;
-
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
 
@@ -44,90 +61,243 @@
             label = "DOT_SEMI";
             #binding-cells = <0>;
             bindings = <&kp DOT>, <&kp SEMI>;
-
             mods = <(MOD_LSFT|MOD_RSFT)>;
         };
-    };
 
-    macros {
-        Hiragana: Hiragana {
-            compatible = "zmk,behavior-macro";
+        // === SEMI key: tap/hold=SEMI, tap-and-hold=MO(BALL) ===
+        td_semi: td_semi {
+            compatible = "zmk,behavior-tap-dance";
             #binding-cells = <0>;
-            bindings = <&kp LC(SPACE)>;
-            label = "HIRAGANA";
+            tapping-term-ms = <250>;
+            bindings = <&kp SEMI>, <&mo BALL>;
+        };
+
+
+        // === Shift+SEMI/SQT で modifier 消失する問題を回避 ===
+        // Shift押下中: 直接 &kp で即時送信 / それ以外: td_* (tap-and-hold = MO layer)
+        mm_semi: mm_semi {
+            compatible = "zmk,behavior-mod-morph";
+            #binding-cells = <0>;
+            bindings = <&td_semi>, <&kp SEMI>;
+            mods = <(MOD_LSFT|MOD_RSFT)>;
+            keep-mods = <(MOD_LSFT|MOD_RSFT)>;
+        };
+
+        // === Thumb key: hold=LSHFT, tap-and-hold=LCTRL+LSHFT ===
+        td_ball_inner: td_ball_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&none>, <&kp LC(LSHFT)>;
+        };
+        td_ball: td_ball {
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td_ball_inner>;
+        };
+
+        // === Vial tap-dance 再現 (逆ネスト方式 + quick-tap-ms) ===
+        // 外側 hold-tap（hold判定をpress時点で確立 → ホールド+他キー即動作）
+        // 内側 tap-dance（tap時に多重押下で2nd-action発動）
+        // quick-tap-ms により「タップ→ホールド」も内側で正しく検出
+
+        // --- 内側 tap-dance: tap時の単押し/連打分岐 ---
+        td0_inner: td0_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&kp SPACE>, <&mo FUN>;
+        };
+        td1_inner: td1_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&kp SPACE>, <&kp LSHFT>;
+        };
+        td2_inner: td2_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&kp LANG2>, <&kp LCTRL>;
+        };
+        td3_inner: td3_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&kp LANG1>, <&kp LCTRL>;
+        };
+        td4_inner: td4_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&none>, <&sk RA(RSHFT)>;
+        };
+        td5_inner: td5_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&kp DEL>, <&kp LCTRL>;
+        };
+        td6_inner: td6_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&none>, <&kp LSHFT>;
+        };
+        td7_inner: td7_inner {
+            compatible = "zmk,behavior-tap-dance";
+            #binding-cells = <0>;
+            tapping-term-ms = <250>;
+            bindings = <&none>, <&kp LSHFT>;
+        };
+
+        // --- 外側 hold-tap: hold-preferred+quick-tap-ms で全機能を両立 ---
+        td0: td0 { // hold=MO(layer), tap=td0_inner / 呼出: &td0 NAV 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&mo>, <&td0_inner>;
+        };
+        td1: td1 { // hold=&kp(mod), tap=td1_inner / 呼出: &td1 LALT 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td1_inner>;
+        };
+        td2: td2 { // 呼出: &td2 FUN 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&mo>, <&td2_inner>;
+        };
+        td3: td3 { // 呼出: &td3 NUM 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&mo>, <&td3_inner>;
+        };
+        td4: td4 { // 呼出: &td4 RALT 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td4_inner>;
+        };
+        td5: td5 { // 呼出: &td5 LSHFT 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td5_inner>;
+        };
+        td6: td6 { // 呼出: &td6 LCTRL 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td6_inner>;
+        };
+        td7: td7 { // 呼出: &td7 LALT 0
+            compatible = "zmk,behavior-hold-tap";
+            #binding-cells = <2>;
+            flavor = "hold-preferred";
+            tapping-term-ms = <250>;
+            quick-tap-ms = <250>;
+            require-prior-idle-ms = <80>;
+            bindings = <&kp>, <&td7_inner>;
         };
     };
 
     keymap {
         compatible = "zmk,keymap";
 
+        // L0: 英字 / 親指: td0=NAV, mt=LSHFT, td3=NUM, td1=LALT
+        // 左親指は内側へ寄せ c2(LGUI)/c3(LCTRL)/c4(NAV)/c5(LSHFT) に集約。
+        // 外側 c0/c1 は空き(&none)。
         default_layer {
             label = "QWRT";
             bindings = <
-&kp Q      &kp W         &kp E     &kp R         &kp T                                    &kp Y            &kp U  &kp I      &kp O    &kp P
-&kp A      &kp S         &kp D     &kp F         &kp G                                    &kp H            &kp J  &kp K      &kp L    &kp SEMI
-&kp Z      &kp X         &kp C     &kp V         &kp B                                    &kp N            &kp M  &kp COMMA  &kp DOT  &kp SLASH
-&kp LCTRL  &kp LEFT_WIN  &kp LALT  &lt 6 ESCAPE  &lt 4 SPACE  &lt 5 LA(GRAVE)  &kp ENTER  &lt 2 BACKSPACE                             &kp RSHFT
+&kp Q  &kp W   &kp E    &kp R             &kp T                            &kp Y       &kp U        &kp I      &kp O    &kp P
+&kp A  &kp S   &kp D    &kp F             &kp G                            &kp H       &kp J        &kp K      &kp L    &mm_semi
+&kp Z  &kp X   &kp C    &kp V             &kp B                            &kp N       &kp M        &kp COMMA  &kp DOT  &kp FSLH
+&none  &none   &kp LGUI &td_ball LCTRL 0  &td0 NAV 0      &mt LSHFT LANG2  &td3 NUM 0  &td1 LALT 0                      &mo 5
             >;
         };
 
-        number_layer {
-            label = "NUM";
+        // L1: ナビ / 音量 / コピペ
+        nav_layer {
+            label = "NAV";
             bindings = <
-&kp NUMBER_1  &kp NUMBER_2  &kp NUMBER_3  &kp NUMBER_4  &kp NUMBER_5                  &kp NUMBER_6  &kp NUMBER_7  &kp NUMBER_8  &kp NUMBER_9  &kp NUMBER_0
-&kp LEFT      &kp DOWN      &kp UP_ARROW  &kp RIGHT     &none                         &none         &none         &none         &none         &none
-&none         &none         &none         &none         &none                         &none         &none         &trans        &trans        &none
-&trans        &trans        &trans        &trans        &trans        &trans  &trans  &trans                                                  &trans
+&kp Q         &kp W         &kp E      &kp R      &kp T                          &kp Y     &kp ENTER  &kp ESC    &kp TAB    &kp END
+&kp C_VOL_DN  &kp C_VOL_UP  &kp LCTRL  &kp LSHFT  &kp G                          &kp LEFT  &kp DOWN   &kp UP     &kp RIGHT  &kp HOME
+&kp LC(Z)     &kp LC(X)     &kp LC(C)  &kp LC(V)  &kp ENTER                      &kp BSPC  &kp GRAVE  &kp MINUS  &kp EQUAL  &kp BSLH
+&trans  &trans  &kp LGUI  &trans  &trans      &trans  &td5 LSHFT 0  &td4 RALT 0                            &mo SCROLL
             >;
         };
 
-        symbol_layer {
-            label = "SYM";
-            bindings = <
-&kp EXCLAMATION  &kp AT_SIGN   &kp HASH      &kp DOLLAR    &kp PERCENT                  &kp CARET       &kp AMPERSAND  &kp ASTERISK      &kp LEFT_PARENTHESIS  &kp RIGHT_PARENTHESIS
-&bt BT_CLR       &bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &trans                       &kp MINUS       &kp EQUAL      &kp LEFT_BRACKET  &kp RIGHT_BRACKET     &kp SQT
-&trans           &trans        &trans        &trans        &trans                       &kp UNDERSCORE  &kp PLUS       &trans            &trans                &kp NON_US_BACKSLASH
-&trans           &trans        &trans        &trans        &trans       &trans  &trans  &trans                                                                 &trans
-            >;
-        };
-
-        function_layer {
+        // L2: F-key / マウスホイール / マウスボタン
+        fun_layer {
             label = "FUN";
             bindings = <
-&kp F1  &kp F2   &kp F3   &kp F4   &none                   &none   &none  &none  &none  &none
-&kp F5  &kp F6   &kp F7   &kp F8   &none                   &none   &none  &none  &none  &none
-&kp F9  &kp F10  &kp F11  &kp F12  &none                   &none   &none  &none  &none  &none
-&trans  &trans   &trans   &trans   &trans  &trans  &trans  &trans                       &trans
+&kp F1     &kp F2     &kp F3     &kp F4     &kp F5                            &kp F6  &kp F7  &kp F8     &kp F9    &kp F10
+&kp F11    &kp F12    &kp LCTRL  &kp LSHFT  &kp F16                           &kp H   &kp J   &kp K      &kp LBKT  &kp RBKT
+&kp LC(Z)  &kp LC(X)  &kp LC(C)  &kp LC(V)  &kp LC(B)                         &kp N   &kp M   &kp COMMA  &kp DOT   &kp FSLH
+&trans  &trans  &kp LGUI  &trans  &trans     &trans  &td5 LSHFT 0  &td4 RALT 0                          &trans
             >;
         };
 
-        mouse_layer {
-            label = "MOUSE";
+        // L3: 数字行 / td7=&kp LALT
+        num_layer {
+            label = "NUM";
             bindings = <
-&kp N1          &kp N2          &kp N3        &kp N4     &kp N5                  &kp N6         &kp N7     &kp N8  &kp N9     &kp N0
-&kp LEFT_ARROW  &kp DOWN_ARROW  &kp UP_ARROW  &kp RIGHT  &none                   &kp PAGE_UP    &mkp LCLK  &none   &mkp RCLK  &mkp MCLK
-&none           &none           &none         &none      &none                   &kp PAGE_DOWN  &none      &none   &none      &none
-&none           &trans          &trans        &trans     &trans  &trans  &trans  &mo 3                                        &none
+&kp N1  &kp N2    &kp N3  &kp N4  &kp N5                              &kp N6  &kp N7  &kp N8     &kp N9    &kp N0
+&kp A   &kp S     &kp D   &kp F   &kp G                               &kp H   &kp J   &kp K      &kp LBKT  &kp RBKT
+&kp Z   &kp X     &kp C   &kp V   &kp B                               &kp N   &kp M   &kp COMMA  &kp DOT   &kp FSLH
+&trans  &trans  &kp LGUI  &trans  &td7 LALT 0  &kp LSHFT  &trans  &trans                                  &trans
             >;
         };
 
+        // L4: BALL (マウスボタン / スクロール起動)
+        ball_layer {
+            label = "BALL";
+            bindings = <
+&none  &none  &none       &none      &none                       &none       &mkp MCLK       &mkp MB4      &mkp MB5   &none
+&none  &none  &mkp MCLK   &mkp LCLK  &mkp RCLK                   &kp LEFT    &mkp LCLK       &mkp RCLK     &kp RIGHT  &none
+&none  &none  &none       &none      &none                       &mo SCROLL  &msc SCRL_DOWN  &msc SCRL_UP  &kp LCTRL  &none
+&none  &none  &none  &mo SCROLL  &td7 LALT 0  &td6 LCTRL 0   &none       &none                                   &none
+            >;
+        };
+
+        // L5: SCROLL (BT/出力切替 / 方向スクロール)
         scroll_layer {
             label = "SCROLL";
             bindings = <
-&trans  &trans  &trans  &trans  &trans                  &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans                  &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans                  &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans  &trans  &trans  &trans                          &trans
-            >;
-        };
-
-        snipe_layer {
-            label = "SNIPE";
-            bindings = <
-&trans  &trans  &trans  &trans  &bootloader                  &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans                       &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans                       &trans  &trans  &trans  &trans  &trans
-&trans  &trans  &trans  &trans  &trans       &trans  &trans  &trans                          &trans
+&bt BT_SEL 0  &bt BT_SEL 1  &bt BT_SEL 2  &bt BT_SEL 3  &out OUT_TOG               &trans    &trans     &mkp MB4   &mkp MB5   &trans
+&bt BT_CLR    &trans        &mkp MCLK     &mkp LCLK     &mkp RCLK                  &kp LEFT  &mkp LCLK  &mkp RCLK  &kp RIGHT  &trans
+&trans        &trans        &trans        &trans        &trans                     &trans    &trans     &trans     &trans     &trans
+&trans        &trans        &trans        &trans        &td7 LALT 0  &td6 LCTRL 0  &trans    &trans                           &trans
             >;
         };
     };
