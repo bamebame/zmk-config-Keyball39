@@ -227,7 +227,7 @@
         // 左親指は内側へ寄せ c2(LGUI)/c3(LCTRL)/c4(NAV)/c5(LSHFT) に集約。
         // 外側 c0/c1 は空き(&none)。
         default_layer {
-            label = "QWRT";
+            display-name = "QWRT";
             bindings = <
 &kp Q  &kp W   &kp E    &kp R             &kp T                            &kp Y       &kp U        &kp I      &kp O    &kp P
 &kp A  &kp S   &kp D    &kp F             &kp G                            &kp H       &kp J        &kp K      &kp L    &kp SEMI
@@ -238,7 +238,7 @@
 
         // L1: ナビ / 音量 / コピペ
         nav_layer {
-            label = "NAV";
+            display-name = "NAV";
             bindings = <
 &kp Q         &kp W         &kp E      &kp R      &kp T                          &kp Y     &kp ENTER  &kp ESC    &kp TAB    &kp END
 &kp C_VOL_DN  &kp C_VOL_UP  &kp LCTRL  &kp LSHFT  &kp G                          &kp LEFT  &kp DOWN   &kp UP     &kp RIGHT  &kp HOME
@@ -249,7 +249,7 @@
 
         // L2: F-key / マウスホイール / マウスボタン
         fun_layer {
-            label = "FUN";
+            display-name = "FUN";
             bindings = <
 &kp F1     &kp F2     &kp F3     &kp F4     &kp F5                            &kp F6  &kp F7  &kp F8     &kp F9    &kp F10
 &kp F11    &kp F12    &kp LCTRL  &kp LSHFT  &kp F16                           &kp H   &kp J   &kp K      &kp LBKT  &kp RBKT
@@ -260,7 +260,7 @@
 
         // L3: 数字行 / td7=&kp LALT
         num_layer {
-            label = "NUM";
+            display-name = "NUM";
             bindings = <
 &kp N1  &kp N2    &kp N3  &kp N4  &kp N5                              &kp N6  &kp N7  &kp N8     &kp N9    &kp N0
 &kp A   &kp S     &kp D   &kp F   &kp G                               &kp H   &kp J   &kp SQT    &kp LBKT  &kp RBKT
@@ -271,7 +271,7 @@
 
         // L4: BALL (マウスボタン / スクロール起動)
         ball_layer {
-            label = "BALL";
+            display-name = "BALL";
             bindings = <
 &none  &none  &none       &none      &none                       &kp LC(W)   &mkp MCLK       &mkp MB4      &mkp MB5   &none
 &none  &none  &trans     &trans     &trans                       &kp LEFT    &mkp LCLK       &mkp RCLK     &kp RIGHT  &none
@@ -282,7 +282,7 @@
 
         // L5: SCROLL (BT/出力切替 / 方向スクロール)
         scroll_layer {
-            label = "SCROLL";
+            display-name = "SCROLL";
             bindings = <
 &bt BT_SEL 0     &bt BT_SEL 1     &bt BT_SEL 2     &bt BT_SEL 3     &bt BT_SEL 4        &out OUT_TOG     &trans           &mkp MB4         &mkp MB5         &trans
 &bt BT_CLR       &trans           &kp LCTRL        &kp LSHFT        &kp F16        &kp LEFT         &mkp LCLK        &mkp RCLK        &kp RIGHT        &trans
